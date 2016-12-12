@@ -251,3 +251,247 @@ ggplot(df_all,aes(FPR,TPR))+geom_smooth(size = 2, alpha = 0.7)+
   labs(title= "ROC Combine all curve", 
        x = "False Positive Rate (1-Specificity)", 
        y = "True Positive Rate (Sensitivity)")
+
+#object 3
+#####________seperate plot_________________##################
+library(ggplot2)
+library(ggmap)
+library(mapproj)
+library(nycmaps)
+library(maps)
+library(mapdata)
+library(maptools)
+library(gpclib)
+library(sp)
+
+
+counties=map_data("county")
+nydata=subset(counties,region=='new york')
+unique(nydata$subregion)
+
+nydata_bronx=subset(nydata,subregion=='bronx')
+myMap+geom_polygon(data=nydata_bronx,aes(x=long,y=lat,group=group),fill=NA,color='red')
+data=flood[flood$cz_name_str %in% c('BRONX(ZONE)','BRONX CO.'),]
+
+data$death_ind=ifelse(data$deaths_direct==0&data$injuries_direct==0&data$injuries_indirect==0&data$deaths_indirect==0
+                      ,"","death-cause")
+data$damage_ind=ifelse(data$damage_property_num==0&data$damage_crops_num==0,'','damage-cause')
+
+path_data1=na.omit(data.frame(data$begin_lon,data$begin_lat,data$event_type)) %>% mutate(group=seq(19))
+path_data2=na.omit(data.frame(data$end_lon,data$end_lat,data$event_type)) %>% mutate(group=seq(19))
+nrow(path_data1)
+nrow(path_data2)
+path_data1[20:38,]=path_data2
+path_data=path_data1 %>% rename(lon=data.begin_lon,lat=data.begin_lat,event_type=data.event_type)
+path_data
+data2=data[data$color_ind!=1,]
+ggmap(get_googlemap(center=c(lon=mean(nydata_bronx$long),lat=mean(nydata_bronx$lat)),zoom=12))+
+  geom_polygon(data=nydata_bronx,aes(x=long,y=lat,group=group),fill=NA,color='red')+
+  geom_point(data=data,aes(x=begin_lon,y=begin_lat,size=begin_range+1),color='red',alpha=0.5)+
+  geom_text(data =data, aes(x = begin_lon, y = begin_lat, label = death_ind), size = 3, vjust = 0, hjust = -0.5)+
+  geom_point(data=data,aes(x=end_lon,y=end_lat,size=end_range+1),color='blue',alpha=0.5)+
+  geom_text(data =data, aes(x =end_lon, y =end_lat, label = death_ind), size = 3, vjust = 0, hjust = -0.5)+
+  geom_path(data=path_data,aes(x=lon,y=lat,group=group),lineend = 'round',size=1.5,color='pink')+
+  xlab("latitude")+ylab("longtitue")+ggtitle("Bronx")+
+  theme(legend.position="none")
+
+areaPlot=function(area,varname,zoom=12){
+  nydata_bronx=subset(nydata,subregion==area)
+  data=flood[flood$cz_name_str %in% varname,]
+  #whether damage
+  data$death_ind=ifelse(data$deaths_direct==0&data$injuries_direct==0&data$injuries_indirect==0&data$deaths_indirect==0
+                        ,"","death-cause")
+  data$damage_ind=ifelse(data$damage_property_num==0&data$damage_crops_num==0,'','damage-cause')
+  
+  path_data1=na.omit(data.frame(data$begin_lon,data$begin_lat,data$event_type)) %>% mutate(group=seq(length(na.omit(data$begin_lat))))
+  path_data2=na.omit(data.frame(data$end_lon,data$end_lat,data$event_type)) %>% mutate(group=seq(length(na.omit(data$begin_lat))))
+  x1=nrow(path_data1)
+  x2=nrow(path_data2)
+  path_data1[x1+1:x1+x2,]=path_data2
+  path_data=path_data1 %>% rename(lon=data.begin_lon,lat=data.begin_lat,event_type=data.event_type)
+  
+  ggmap(get_googlemap(center=c(lon=mean(nydata_bronx$long),lat=mean(nydata_bronx$lat)),zoom))+
+    geom_polygon(data=nydata_bronx,aes(x=long,y=lat,group=group),fill=NA,color='red')+
+    geom_point(data=data,aes(x=begin_lon,y=begin_lat,size=begin_range+1),color="red",alpha=0.5)+
+    geom_text(data =data, aes(x = begin_lon, y = begin_lat, label = death_ind), size = 3, vjust = 0, hjust = -0.5)+
+    geom_point(data=data,aes(x=end_lon,y=end_lat,size=end_range+1),color="blue",alpha=0.5)+
+    geom_text(data =data, aes(x = end_lon, y = end_lat, label = damage_ind), color='red',size = 3, vjust = 0, hjust = -0.5)+
+    geom_path(data=path_data,aes(x=lon,y=lat,group=group),lineend = 'round',size=1.1,color='pink')+
+    xlab("latitude")+ylab("longtitue")+ggtitle(area)+
+    theme(legend.position='none')
+}
+areaPlot("kings",c("KINGS(BROOKLYN)(ZONE)","KINGS CO."))
+areaPlot("new york",c("NEW YORK(MANHATTAN(ZONE)","NEW YORK CO."))
+areaPlot("queens",c("QUEENS CO.","NORTHERN QUEENS (ZONE)","SOUTHERN QUEENS (ZONE)"),zoom=11)
+areaPlot("richmond",c("RICHMOND CO.","RICHMOND (STATEN IS.) (ZONE)"),zoom=11)
+
+
+#dir.create("./presentation")
+
+devtools::install_github("zachcp/nycmaps") 
+library(mapproj)
+library(nycmaps)
+library(maps)
+library(mapdata)
+library(maptools)
+library(ggmap)
+library(ggplot2)
+png('c:/users/an/desktop/presentation/position.png')
+map(database="nyc",col="white",fill=TRUE, projection="gilbert", orientation= c(90,0,225))
+lon_start=na.omit(flood$begin_lon)
+lat_start=na.omit(flood$begin_lat)
+lon_end=na.omit(flood$end_lon)
+lat_end=na.omit(flood$end_lat)
+coord_start=mapproject(lon_start,lat_start,proj='gilbert',orientation = c(90,0,225))
+points(coord_start,pch=20,cex=1,col=seq(lat_end))
+text(coord_start,labels = seq(lat_end),cex=0.5)
+coord_end=mapproject(lon_end,lat_end,proj='gilbert',orientation = c(90,0,225))
+points(coord_end,pch=10,cex=1,col=seq(lat_end))
+text(coord_end,labels = seq(lat_end),cex=0.5)
+legend('topleft',pch=c(20,10),legend=c('Start Position','End Position'))
+title("Flood in NYC: Position Visulization")
+dev.off()
+  ## Graphics
+  #bar plot
+  used=select(flood,c(cz_name_str,event_type))
+ggplot(used%>%group_by(event_type),aes(event_type))+geom_bar(aes(fill=used$cz_name_str))
+ggplot(used%>%group_by(event_type),aes(event_type))+geom_bar(aes(fill=used$cz_name_str),position='dodge')
+## pie plot
+#data
+names(flood)
+used=select(flood,c(event_type,cz_name_str,flood_cause))
+ggplot(used,aes(x=event_type,fill=flood_cause))+geom_bar(width = 1)+
+  coord_polar(theta="y")+xlab("Freq'")+ylab("type")+ggtitle("flood casue vs. flood type")
+
+#scatterplot
+data=flood
+data$death_ind=ifelse(data$deaths_direct==0&data$injuries_direct==0&data$injuries_indirect==0&data$deaths_indirect==0
+                      ,"","death-cause")
+data$damage_ind=ifelse(data$damage_property_num==0&data$damage_crops_num==0,'','damage-cause')
+used=select(data,c(event_type,begin_date,cz_name_str,death_ind,damage_ind))
+library(lubridate)
+used$begin_date=as.character(used$begin_date)
+used$begin_date=mdy(used$begin_date)
+used$begin_date=as.POSIXct(used$begin_date,origin="2006/01/01")
+library(scales)
+ggplot(used,aes(x=begin_date,y=event_type,color=cz_name_str,shape=as.factor(death_ind),size=as.factor(damage_ind)))+geom_point()+
+  scale_x_datetime(breaks=date_breaks("1 month"))+theme(axis.text.x=element_text(angle=90))+
+  geom_text(data=used,aes(x=begin_date,y=event_type,label=as.character(death_ind)),size=3,color="red",hjust=0,vjust=1)+
+  geom_text(data=used,aes(x=begin_date,y=event_type,label=as.character(damage_ind)),size=3,color="red",hjust=0,vjust=1)+
+  ggtitle("Event-type & Event-time & Event-effect")+xlab("2006-2016(unit:1 month)")+ylab("Event type")
+
+
+##_________analysis issuo________#
+nrow(data)
+nrow(data[data$death_ind!='',])
+nrow(data[data$damage_ind!='',])
+library(vcd)
+vcd::mosaic(~event_type+cz_name_str,data=flood,shade=T,legend=TRUE,direction="v",rot_labels=c(0,90,0,0),main="event type and dist.")
+data$flood_cause=as.character(data$flood_cause)
+for (i in seq(data$flood_cause)){
+  if(!((as.character(data$flood_cause[i]) %in% c("Heavy Rain","Heavy Rain / Tropical System")))){
+    data$flood_cause[i]='Not Specified'
+  }
+}
+fix(data)
+mosaic(~event_type+flood_cause,data=data,shade=T,legend=TRUE,direction="v",rot_labels=c(90,0,0,0),main="event type and casue")
+
+mosaic(~event_type+flood_cause,data=flood[flood$flood_cause %in%c("Heavy Rain","Heavy Rain / Tropical System"),],shade=T,legend=TRUE,direction="v",rot_labels=c(90,0,0,0),main="event type and casue")
+
+eucDis=function(x1,y1,x2,y2){
+  return(sqrt((x1-x2)^2+(y1-y2)^2))
+}
+names(data)
+data$l_move=eucDis(data$begin_lat,data$begin_lon,data$end_lat,data$end_lon)
+data$l_move_ind=cut(data$l_move,3)
+mosaic(~cz_name_str+l_move_ind,data=data,shade=T,legend=T,direction="v",rot_labels=c(30,30,30,30))
+mosaic(~cz_name_str+begin_range+event_type,data=data,shade=T,legend=T,direction="v",rot_labels=c(90,90,90,90))
+mosaic(~cz_name_str+begin_range,data=data,shade=T,legend=T,direction="v",rot_labels=c(90,90,90,90))
+cor(na.omit(data.frame(data$begin_range,data$end_range)))
+mosaic(cz_name_str~begin_range|event_type,data=data,shade=T,direction="v",rot_labels=c(90,90,90,90))
+for (i in seq(data$event_type)){
+  if (data$damage_ind[i]=='damage-cause' & data$death_ind[i] != 'death-cause') {
+    data$effect[i]='damage'
+  }else if (data$damage_ind[i]!='damage-cause' & data$death_ind[i] == 'death-cause') {
+    data$effect[i]='death'
+  }else if (data$damage_ind[i]=='damage-cause' & data$death_ind[i] == 'death-cause') {
+    data$effect[i]='damage'
+  }else{
+    data$effect[i]='None'
+  } 
+}
+mosaic(~cz_name_str+effect,data=data,shade=T,direction="v",rot_labels=c(90,90,90,90))
+
+# bayes
+setwd("/users/andy/desktop/presentation")
+list.files()
+flood=read.csv("./flooding_nyc5borough.csv",stringsAsFactors = F)
+names(flood)=tolower(names(flood))
+data=flood
+data$death_ind=ifelse(data$deaths_direct==0&data$injuries_direct==0&data$injuries_indirect==0&data$deaths_indirect==0
+                      ,"","death-cause")
+data$damage_ind=ifelse(data$damage_property_num==0&data$damage_crops_num==0,'','damage-cause')
+
+for (i in seq(data$event_type)){
+  if (data$damage_ind[i]=='damage-cause' & data$death_ind[i] != 'death-cause') {
+    data$effect[i]=1
+  }else if (data$damage_ind[i]!='damage-cause' & data$death_ind[i] == 'death-cause') {
+    data$effect[i]=1
+  }else if (data$damage_ind[i]=='damage-cause' & data$death_ind[i] == 'death-cause') {
+    data$effect[i]=1
+  }else{
+    data$effect[i]=0
+  }
+  
+}
+eucDis=function(x1,y1,x2,y2){
+  return(sqrt((x1-x2)^2+(y1-y2)^2))
+}
+data$l_move=eucDis(data$begin_lat,data$begin_lon,data$end_lat,data$end_lon)
+
+data$region_code=as.numeric(data$cz_name_str)
+data$type_code=as.numeric(data$event_type)
+library(dplyr)
+used=select(data,c(effect,region_code,type_code,l_move,begin_range,end_range))
+nna.used=na.omit(used)
+stan.code="
+data{
+int<lower=0> N;//number of observation
+int<lower=0> p;//number of parameters
+int effect[N];
+int<lower=0> region[N];
+int<lower=0> type[N];
+int<lower=0> brange[N];
+int<lower=0> erange[N];
+real<lower=0> move[N];
+}
+parameters{
+real beta[p];
+}
+
+transformed parameters {
+real<lower=0> odds[N];
+real<lower=0,upper=1> prob[N];
+
+for (i in 1:N){
+odds[i] <- exp(beta[1]+beta[2]*region[i]+beta[3]*type[i]+beta[4]*brange[i]+beta[5]*erange[i]+beta[6]*move[i]);
+prob[i] <- odds[i]/(odds[i]+1);
+}
+}
+model{
+effect~bernoulli(prob);
+}
+"
+dat=list(
+  N=nrow(nna.used),
+  p=6,
+  effect=nna.used$effect,
+  region=nna.used$region_code,
+  type=nna.used$type_code,
+  brange=nna.used$begin_range,
+  erange=nna.used$end_range,
+  move=nna.used$l_move
+)
+
+resstan=stan(model_code=stan.code,data=dat,iter=2000,chains=5)
+
